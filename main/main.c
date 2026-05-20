@@ -1,4 +1,6 @@
 #include <stdio.h>
+#include "freertos/FreeRTOS.h"
+#include "freertos/task.h"
 
 #include "esp_err.h"
 #include "esp_log.h"
@@ -10,9 +12,14 @@
 
 static const char *TAG = "TEMP_STATION";
 
-#define WIFI_SSID       "ASUS_10"
+//#define WIFI_SSID       "ASUS_10"
+//#define WIFI_PASS       "Protei_ST!"
+//#define MQTT_BROKER_URL "mqtt://192.168.8.126"
+//#define WIFI_SSID       "Emerald"
+//#define WIFI_PASS       "Protei_ST!"
+#define WIFI_SSID       "Emerald"
 #define WIFI_PASS       "Protei_ST!"
-#define MQTT_BROKER_URL "mqtt://192.168.8.126"
+#define MQTT_BROKER_URL "mqtt://172.16.101.2"
 #define MQTT_TOPIC      "temp_station/temperature"
 
 typedef enum {
