@@ -3,6 +3,8 @@
 #include "esp_err.h"
 #include "esp_log.h"
 #include "nvs_flash.h"
+#include "freertos/FreeRTOS.h"
+#include "freertos/task.h"
 
 #include "device_state.h"
 #include "led_component.h"
@@ -12,9 +14,10 @@
 
 static const char *TAG = "TEMP_STATION";
 
-#define WIFI_SSID       "ASUS_10"
+#define WIFI_SSID       "Emerald"
 #define WIFI_PASS       "Protei_ST!"
-#define MQTT_BROKER_URL "mqtt://192.168.8.126"
+//#define MQTT_BROKER_URL "mqtt://172.16.101.4"
+#define MQTT_BROKER_URL "mqtt://10.10.251.13"
 #define MQTT_TOPIC      "temp_station/temperature"
 
 static device_state_t current_state = ST_INIT;
@@ -45,6 +48,7 @@ void app_main(void)
                 ESP_ERROR_CHECK(wifi_component_init_station(WIFI_SSID, WIFI_PASS));
                 ESP_ERROR_CHECK(mqtt_component_init(MQTT_BROKER_URL));
                 ESP_ERROR_CHECK(sensor_component_init());
+                vTaskDelay(pdMS_TO_TICKS(1000));
                 set_device_state(ST_CONNECTING);
                 break;
 
@@ -60,6 +64,7 @@ void app_main(void)
 
             case ST_READING:
                 if (sensor_component_read(&current_sensor_data) == ESP_OK) {
+                    vTaskDelay(pdMS_TO_TICKS(1000));
                     set_device_state(ST_PUBLISHING);
                 } else {
                     set_device_state(ST_ERROR);
@@ -72,7 +77,7 @@ void app_main(void)
                 if (mqtt_component_publish(MQTT_TOPIC, payload, 1, 0) == ESP_OK) {
                     ESP_LOGI(TAG, "Published: %s", payload);
                     set_device_state(ST_READING);
-                    vTaskDelay(pdMS_TO_TICKS(5000));
+                    vTaskDelay(pdMS_TO_TICKS(500));
                 } else {
                     ESP_LOGW(TAG, "Publish failed, waiting for reconnect");
                     set_device_state(ST_CONNECTING);
