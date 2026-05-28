@@ -1,0 +1,2 @@
+dependencies:
+  espressif/bh1750: "^2.0.0"
