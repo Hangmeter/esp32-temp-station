@@ -1,3 +1,4 @@
+#include <stdbool.h>
 #include <stdio.h>
 
 #include "esp_err.h"
@@ -7,6 +8,7 @@
 #include "freertos/FreeRTOS.h"
 #include "freertos/queue.h"
 
+#include "bh1750_component.h"
 #include "dht_component.h"
 #include "device_state.h"
 #include "led_component.h"
@@ -44,11 +46,17 @@ void app_main(void)
     QueueHandle_t dht_queue = xQueueCreate(1, sizeof(dht_data_t));
     ESP_ERROR_CHECK(dht_queue != NULL ? ESP_OK : ESP_FAIL);
 
+    QueueHandle_t bh1750_queue = xQueueCreate(1, sizeof(bh1750_data_t));
+    ESP_ERROR_CHECK(bh1750_queue != NULL ? ESP_OK : ESP_FAIL);
+
     dht_data_t local_dht_storage = {
         .temperature = 0.0f,
         .humidity = 0.0f,
         .is_valid = false,
     };
+
+    float bh1750_lux = 0.0f;
+    bool bh1750_valid = false;
 
     ESP_ERROR_CHECK(led_component_init());
     led_component_set_state(ST_INIT);
@@ -61,6 +69,13 @@ void app_main(void)
                 ESP_ERROR_CHECK(wifi_component_init_station(WIFI_SSID, WIFI_PASS));
                 ESP_ERROR_CHECK(mqtt_component_init(MQTT_BROKER_URL));
                 ESP_ERROR_CHECK(sensor_component_init());
+                esp_err_t bh1750_ret = bh1750_component_init();
+                if (bh1750_ret == ESP_OK) {
+                    bh1750_worker_start(bh1750_queue);
+                } else {
+                    ESP_LOGW(TAG, "BH1750 initialization failed: %s", esp_err_to_name(bh1750_ret));
+                    bh1750_valid = false;
+                }
                 set_device_state(ST_CONNECTING);
                 break;
 
@@ -81,6 +96,11 @@ void app_main(void)
                 }
 
                 if (sensor_component_read(&current_sensor_data) == ESP_OK) {
+                    bh1750_data_t incoming_bh1750 = {0};
+                    if (xQueueReceive(bh1750_queue, &incoming_bh1750, 0) == pdPASS) {
+                        bh1750_lux = incoming_bh1750.lux;
+                        bh1750_valid = incoming_bh1750.is_valid;
+                    }
                     set_device_state(ST_PUBLISHING);
                 } else {
                     set_device_state(ST_ERROR);
@@ -89,20 +109,32 @@ void app_main(void)
             }
 
             case ST_PUBLISHING: {
-                char payload[160];
+                char payload[224];
+                char dht_temperature[16];
+                char dht_humidity[16];
+                char bh1750_lux_json[16];
+
                 if (local_dht_storage.is_valid) {
-                    snprintf(payload,
-                             sizeof(payload),
-                             "{\"temperature\":%.1f,\"dht_temperature\":%.1f,\"dht_humidity\":%.1f}",
-                             current_sensor_data.temperature_c,
-                             local_dht_storage.temperature,
-                             local_dht_storage.humidity);
+                    snprintf(dht_temperature, sizeof(dht_temperature), "%.1f", local_dht_storage.temperature);
+                    snprintf(dht_humidity, sizeof(dht_humidity), "%.1f", local_dht_storage.humidity);
                 } else {
-                    snprintf(payload,
-                             sizeof(payload),
-                             "{\"temperature\":%.1f,\"dht_temperature\":null,\"dht_humidity\":null}",
-                             current_sensor_data.temperature_c);
+                    snprintf(dht_temperature, sizeof(dht_temperature), "null");
+                    snprintf(dht_humidity, sizeof(dht_humidity), "null");
                 }
+
+                if (bh1750_valid) {
+                    snprintf(bh1750_lux_json, sizeof(bh1750_lux_json), "%.1f", bh1750_lux);
+                } else {
+                    snprintf(bh1750_lux_json, sizeof(bh1750_lux_json), "null");
+                }
+
+                snprintf(payload,
+                         sizeof(payload),
+                         "{\"temperature\":%.1f,\"dht_temperature\":%s,\"dht_humidity\":%s,\"lux\":%s}",
+                         current_sensor_data.temperature_c,
+                         dht_temperature,
+                         dht_humidity,
+                         bh1750_lux_json);
 
                 if (mqtt_component_publish(MQTT_TOPIC, payload, 1, 0) == ESP_OK) {
                     ESP_LOGI(TAG, "Published: %s", payload);
