@@ -16,12 +16,14 @@
 #include "sensor_component.h"
 #include "wifi_component.h"
 
-static const char *TAG = "TEMP_STATION";
+static const char *TAG = "MAIN_APP";
 
-#define WIFI_SSID       "ASUS_10"
-#define WIFI_PASS       "Protei_ST!"
+//#define WIFI_SSID       "ASUS_10"
+//#define WIFI_PASS       "Protei_ST!"
+#define WIFI_SSID       "GL_AXT1800"
+#define WIFI_PASS       "WRHD24ERWM"
 #define MQTT_BROKER_URL "mqtt://192.168.8.126"
-#define MQTT_TOPIC      "temp_station/temperature"
+#define MQTT_TOPIC      "esp32-e6e4/env"
 
 static device_state_t current_state = ST_INIT;
 static sensor_data_t current_sensor_data = {0};
