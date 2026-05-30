@@ -1,14 +1,15 @@
-#include "bh1750_component.h"
-
-#include "bh1750.h"
 #include "esp_err.h"
 #include "driver/gpio.h"
 #include "driver/i2c_master.h"
 #include "esp_log.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
+#include "i2cdev.h"
+#include "bh1750_component.h"
+#include <bh1750.h>
 
 #define BH1750_I2C_PORT I2C_NUM_0
+#define BH1750_I2C_ADDRESS BH1750_ADDR_LO
 #define BH1750_SDA_GPIO GPIO_NUM_18
 #define BH1750_SCL_GPIO GPIO_NUM_19
 #define BH1750_POLL_INTERVAL_MS 10000
@@ -19,18 +20,28 @@
 
 static const char *TAG = "BH1750_COMPONENT";
 
-static i2c_master_bus_handle_t s_i2c_bus = NULL;
-static bh1750_handle_t s_bh1750 = NULL;
+static i2c_dev_t s_bh1750_dev;
 static bool s_is_initialized = false;
 static bool s_worker_started = false;
 
+//static i2c_master_bus_handle_t s_i2c_bus = NULL;
+//static bh1750_handle_t s_bh1750 = NULL;
+
+
 static esp_err_t bh1750_get_lux(float *lux)
 {
-    if (s_bh1750 == NULL || lux == NULL) {
+    if (!s_is_initialized || lux == NULL) {
         return ESP_ERR_INVALID_STATE;
     }
 
-    return bh1750_get_data(s_bh1750, lux);
+    uint16_t lux_raw = 0;
+    esp_err_t ret = bh1750_read(&s_bh1750_dev, &lux_raw);
+    if (ret != ESP_OK) {
+        return ret;
+    }
+
+    *lux = (float)lux_raw;
+    return ESP_OK;
 }
 
 static void bh1750_task(void *arg)
@@ -45,10 +56,11 @@ static void bh1750_task(void *arg)
             .is_valid = false,
         };
 
-        if (bh1750_get_lux(&data.lux) == ESP_OK) {
+        esp_err_t ret = bh1750_get_lux(&data.lux);
+        if (ret == ESP_OK) {
             data.is_valid = true;
         } else {
-            ESP_LOGW(TAG, "Failed to read BH1750 lux value");
+            ESP_LOGW(TAG, "Failed to read BH1750 lux value: %s", esp_err_to_name(ret));
         }
 
         if (xQueueSend(output_queue, &data, 0) != pdPASS) {
@@ -65,36 +77,35 @@ esp_err_t bh1750_component_init(void)
         return ESP_OK;
     }
 
-    const i2c_master_bus_config_t i2c_bus_config = {
-        .i2c_port = BH1750_I2C_PORT,
-        .sda_io_num = BH1750_SDA_GPIO,
-        .scl_io_num = BH1750_SCL_GPIO,
-        .clk_source = I2C_CLK_SRC_DEFAULT,
-        .glitch_ignore_cnt = 7,
-        .flags.enable_internal_pullup = true,
-    };
-
-    esp_err_t ret = i2c_new_master_bus(&i2c_bus_config, &s_i2c_bus);
+    esp_err_t ret = i2cdev_init();
     if (ret != ESP_OK) {
-        ESP_LOGE(TAG, "Failed to initialize I2C bus: %s", esp_err_to_name(ret));
+        ESP_LOGE(TAG, "Failed to initialize i2cdev subsystem: %s", esp_err_to_name(ret));
         return ret;
     }
 
-    ret = bh1750_create(s_i2c_bus, BH1750_I2C_ADDRESS_DEFAULT, &s_bh1750);
+    memset(&s_bh1750_dev, 0, sizeof(s_bh1750_dev));
+
+    ret = bh1750_init_desc(&s_bh1750_dev,
+                           BH1750_I2C_ADDRESS,
+                           BH1750_I2C_PORT,
+                           BH1750_SDA_GPIO,
+                           BH1750_SCL_GPIO);
     if (ret != ESP_OK) {
-        ESP_LOGE(TAG, "Failed to create BH1750 handle: %s", esp_err_to_name(ret));
+        ESP_LOGE(TAG, "Failed to initialize BH1750 descriptor: %s", esp_err_to_name(ret));
         return ret;
     }
 
-    ret = bh1750_power_on(s_bh1750);
+    ret = bh1750_power_on(&s_bh1750_dev);
     if (ret != ESP_OK) {
         ESP_LOGE(TAG, "Failed to power on BH1750: %s", esp_err_to_name(ret));
+        (void)bh1750_free_desc(&s_bh1750_dev);
         return ret;
     }
 
-    ret = bh1750_set_measure_mode(s_bh1750, BH1750_CONTINUOUS_HIGH_RES_MODE);
+    ret = bh1750_setup(&s_bh1750_dev, BH1750_MODE_CONTINUOUS, BH1750_RES_HIGH);
     if (ret != ESP_OK) {
-        ESP_LOGE(TAG, "Failed to set BH1750 high resolution continuous mode: %s", esp_err_to_name(ret));
+        ESP_LOGE(TAG, "Failed to configure BH1750 continuous high resolution mode: %s", esp_err_to_name(ret));
+        (void)bh1750_free_desc(&s_bh1750_dev);
         return ret;
     }
 
@@ -102,11 +113,11 @@ esp_err_t bh1750_component_init(void)
     ESP_LOGI(TAG, "BH1750 initialized on SDA GPIO %d, SCL GPIO %d, address 0x%02x",
              BH1750_SDA_GPIO,
              BH1750_SCL_GPIO,
-             BH1750_I2C_ADDRESS_DEFAULT);
+             BH1750_I2C_ADDRESS);
     return ESP_OK;
 }
 
-void bh1750_worker_start(QueueHandle_t output_queue)
+void bh1750_worker_start (QueueHandle_t output_queue)
 {
     if (output_queue == NULL) {
         ESP_LOGE(TAG, "output_queue is NULL");

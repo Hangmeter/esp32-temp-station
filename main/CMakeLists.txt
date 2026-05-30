@@ -8,5 +8,5 @@ idf_component_register(
         "dht_component.c"
         "bh1750_component.c"
     INCLUDE_DIRS "."
-    REQUIRES nvs_flash esp_wifi esp_netif mqtt esp_event esp_system driver bh1750
+    REQUIRES nvs_flash esp_wifi esp_netif mqtt esp_event esp_system driver bh1750 i2cdev
 )

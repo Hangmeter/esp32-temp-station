@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ESP32-C3 Профи Конкурс</title>
+    <style>
+        /* Базовые настройки для всего сайта */
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            margin: 0;
+            padding: 0;
+            background-color: #f4f7f6;
+            color: #333;
+        }
+
+        /* Шапка сайта */
+        header {
+            background-color: #007acc;
+            color: white;
+            text-align: center;
+            padding: 20px 10px;
+        }
+
+        header h1 {
+            margin: 0;
+            font-size: 24px;
+        }
+
+        header p {
+            margin: 5px 0 0 0;
+            font-size: 14px;
+            opacity: 0.9;
+        }
+
+        /* Меню навигации (кнопки) */
+        nav {
+            display: flex;
+            justify-content: center;
+            background-color: #333;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        nav button {
+            background: none;
+            border: none;
+            color: #ccc;
+            padding: 14px 20px;
+            font-size: 16px;
+            cursor: pointer;
+            width: 100%;
+            max-width: 200px;
+            transition: 0.3s;
+        }
+
+        nav button:hover {
+            color: white;
+            background-color: #444;
+        }
+
+        nav button.active {
+            color: white;
+            background-color: #007acc;
+            font-weight: bold;
+        }
+
+        /* Контейнер для контента */
+        .container {
+            max-width: 800px;
+            margin: 20px auto;
+            padding: 20px;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+
+        /* Скрытие экранов по умолчанию */
+        .tab-content {
+            display: none;
+        }
+
+        /* Показ активного экрана */
+        .tab-content.active {
+            display: block;
+        }
+
+        /* Стили для красивых списков */
+        h2 {
+            color: #007acc;
+            border-bottom: 2px solid #eee;
+            padding-bottom: 10px;
+            margin-top: 0;
+        }
+
+        ul {
+            list-style-type: none;
+            padding: 0;
+        }
+
+        li {
+            background: #f9f9f9;
+            margin: 10px 0;
+            padding: 12px;
+            border-left: 5px solid #007acc;
+            border-radius: 4px;
+        }
+
+        strong {
+            color: #111;
+        }
+
+        .badge {
+            background-color: #007acc;
+            color: white;
+            padding: 2px 8px;
+            border-radius: 12px;
+            font-size: 12px;
+            float: right;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Шапка -->
+    <header>
+        <h1>ESP32-IDF Профи Вызов</h1>
+        <p>Битва инженеров на чистом Си в ESP-IDF v5.5.4</p>
+    </header>
+
+    <!-- Кнопки управления экранами -->
+    <nav>
+        <button class="nav-btn active" onclick="openTab('about')">О конкурсе</button>
+        <button class="nav-btn" onclick="openTab('rules')">Условия участия</button>
+        <button class="nav-btn" onclick="openTab('scores')">Баллы</button>
+    </nav>
+
+    <!-- Основной контент -->
+    <div class="container">
+
+        <!-- Экран 1: О конкурсе -->
+        <div id="about" class="tab-content active">
+            <h2>О конкурсе</h2>
+            <p>Вас ждет серия из 5 сложных этапов. Мы будем шаг за шагом собирать и улучшать проект умного устройства. Весь код пишется строго в рамках операционной системы FreeRTOS.</p>
+            <ul>
+                <li><strong>Этап 1:</strong> Управление RGB-светодиодами на разной частоте через потоки.</li>
+                <li><strong>Этап 2:</strong> Сбор данных с датчиков DHT22 и BH1750 через очереди.</li>
+                <li><strong>Этап 3:</strong> Создание надежного конечного автомата (FSM) для управления системой.</li>
+                <li><strong>Этап 4:</strong> Подключение к Wi-Fi сети и обработка обрывов связи через LwIP.</li>
+                <li><strong>Этап 5:</strong> Отправка данных по MQTT в формате JSON с обработкой ошибок.</li>
+            </ul>
+        </div>
+
+        <!-- Экран 2: Условия участия -->
+        <div id="rules" class="tab-content">
+            <h2>Условия участия</h2>
+            <p>Правила строгие, но честные. Все участники получают одинаковые стартовые условия.</p>
+            <ul>
+                <li><strong>Только ESP-IDF:</strong> Пишем на чистом Си. Никакой среды Arduino!</li>
+                <li><strong>Версия ПО:</strong> Используем строго ESP-IDF v5.5.4 и редактор VS Code.</li>
+                <li><strong>Сборка:</strong> Проект должен собираться без ошибок через CMake.</li>
+                <li><strong>Железо:</strong> Все работают на одинаковых платах ESP32-C3 и датчиках.</li>
+                <li><strong>Сдача кода:</strong> Готовая работа отправляется в виде Pull Request на GitHub.</li>
+            </ul>
+        </div>
+
+        <!-- Экран 3: Балльная система -->
+        <div id="scores" class="tab-content">
+            <h2>Балльная система</h2>
+            <p>Максимум за каждый этап можно получить 100 баллов. Оценка идет по четырем критериям.</p>
+            <ul>
+                <li><strong>Работоспособность <span class="badge">40 баллов</span></strong><br>Код компилируется. Устройство выполняет главную задачу этапа.</li>
+                <li><strong>Потокобезопасность <span class="badge">30 баллов</span></strong><br>Правильные очереди FreeRTOS. Процессор не блокируется зря.</li>
+                <li><strong>Чистота кода <span class="badge">20 баллов</span></strong><br>Код разбит на понятные файлы. Используются логи ESP_LOG.</li>
+                <li><strong>Скорость <span class="badge">10 баллов</span></strong><br>Бонусные баллы за самую быструю сдачу рабочего кода.</li>
+            </ul>
+        </div>
+
+    </div>
+
+    <!-- Скрипт переключения экранов -->
+    <script>
+        function openTab(tabId) {
+            // Скрываем все экраны
+            const contents = document.querySelectorAll('.tab-content');
+            contents.forEach(content => content.classList.remove('active'));
+
+            // Убираем подсветку со всех кнопок
+            const buttons = document.querySelectorAll('.nav-btn');
+            buttons.forEach(btn => btn.classList.remove('active'));
+
+            // Показываем нужный экран
+            document.getElementById(tabId).classList.add('active');
+
+            // Подсвечиваем нажатую кнопку
+            event.currentTarget.classList.add('active');
+        }
+        
+    </script>
+
+</body>
+</html>

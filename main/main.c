@@ -18,8 +18,10 @@
 
 static const char *TAG = "MAIN_APP";
 
-//#define WIFI_SSID       "ASUS_10"
+//#define WIFI_SSID       "Emerald"
 //#define WIFI_PASS       "Protei_ST!"
+// #define MQTT_BROKER_URL "mqtt://10.10.251.13"
+
 #define WIFI_SSID       "GL_AXT1800"
 #define WIFI_PASS       "WRHD24ERWM"
 #define MQTT_BROKER_URL "mqtt://192.168.8.126"
@@ -71,10 +73,10 @@ void app_main(void)
                 ESP_ERROR_CHECK(sensor_component_init());
                 esp_err_t bh1750_ret = bh1750_component_init();
                 if (bh1750_ret == ESP_OK) {
-                    bh1750_worker_start(bh1750_queue);
+                   bh1750_worker_start(bh1750_queue);
                 } else {
-                    ESP_LOGW(TAG, "BH1750 initialization failed: %s", esp_err_to_name(bh1750_ret));
-                    bh1750_valid = false;
+                   ESP_LOGW(TAG, "BH1750 initialization failed: %s", esp_err_to_name(bh1750_ret));
+                   bh1750_valid = false;
                 }
                 set_device_state(ST_CONNECTING);
                 break;
